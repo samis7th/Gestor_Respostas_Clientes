@@ -1,0 +1,1608 @@
+{
+  "name": "Webhook Receber Respostas 2.0",
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "Sua-Instancia",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"phone\": \"{{$json.Telefone}}\",\n  \"message\": \"{{$json.MensagemPersonalizada.replace(/\\n/g, '\\\\n')}}\\n\\n1 - Sim!\\n2 - Me mudei.\"\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        704,
+        960
+      ],
+      "id": "9bbe003c-36a5-470d-abb5-633fd419e9ce",
+      "name": "Envia confirmação de endereço"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1152,
+        960
+      ],
+      "id": "c1248442-ff07-4351-8e2c-324ef574f583",
+      "name": "No Operation, do nothing"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "Sua_planilha",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "url"
+        }
+      },
+      "name": "Resposta clientes",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 3,
+      "position": [
+        -1264,
+        1216
+      ],
+      "id": "c97a4e37-a967-441e-bfa4-02a1c3f77ef8"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "=receber-resposta",
+        "options": {}
+      },
+      "name": "Ler mensagens",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -1472,
+        1216
+      ],
+      "webhookId": "receber-resposta",
+      "id": "8b2d91a2-986d-4342-a172-48f32b016dc2",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => {\n  // Tenta pegar o endereço dentro de rows (resultado do Get Row)\n  const rows = item.json.rows || [];\n  const endereco = (rows[0]?.Endereco || rows[0]?.endereco || item.json.Endereco || \"não informado\").trim();\n\n  // Monta a mensagem personalizada\n  const mensagem = `Perfeito! Podemos confirmar seu endereço?\\n\\n📍 *${$input.first().json['Endereço']}*`;\n\n  // Salva no JSON para o próximo nó\n  item.json.MensagemPersonalizada = mensagem;\n\n  // Garante telefone formatado corretamente\n  let telefone = String(item.json.Telefone || \"\").replace(/\\D/g, \"\");\n  if (telefone && !telefone.startsWith(\"55\")) telefone = \"55\" + telefone;\n  item.json.Telefone = telefone;\n\n  return item;\n});\n\n\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        960
+      ],
+      "id": "79567f1c-c772-4eb1-96b0-ef9b35c73ec1",
+      "name": "Formata mensagem com endereço"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -544,
+        1376
+      ],
+      "id": "9166881d-1188-4f66-8c1f-74953d33cc19",
+      "name": "OpenAI Chat Model"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.output }}",
+                    "rightValue": "outro",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "eb076a99-1b76-45bb-b030-b66432420a88"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "e3f68288-b027-4089-8deb-254438feb07a",
+                    "leftValue": "={{ $json.output }}",
+                    "rightValue": "confirmacao_endereco",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "e52f7283-d781-4697-9236-2baf3e9ab877",
+                    "leftValue": "={{ $json.output }}",
+                    "rightValue": "mudanca_endereco",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "8cc14a01-c29f-45e2-bcff-de3d8ee01333",
+                    "leftValue": "={{ $json.output }}",
+                    "rightValue": "novo_endereco",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.3,
+      "position": [
+        32,
+        1200
+      ],
+      "id": "3dddd29a-42ea-4c3d-a881-b028a8ef010c",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "amount": 3
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -176,
+        1232
+      ],
+      "id": "87f1c534-2e77-46ed-ba80-878e9b92e318",
+      "name": "Wait",
+      "webhookId": "b6faa105-7c57-4f22-8d9b-d2aef9396aeb"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        704,
+        1344
+      ],
+      "id": "c1a22c83-688d-498a-b2e9-3307ce364b37",
+      "name": "No Operation, do nothing2"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        944,
+        1536
+      ],
+      "id": "2ee4c2cd-f74b-43b5-abdc-ee2b03dcd62b",
+      "name": "No Operation, do nothing1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "Sua-Instancia",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"phone\": {{ $json.Telefone }},\n  \"message\": \"Poderia, por favor, nos informar o seu novo endereço?\\n\\nEnvie neste formato:\\nBairro - Rua - Número\"\n}\n\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        1344
+      ],
+      "id": "5b170878-d101-45c8-8f49-6280110f1620",
+      "name": "Solicita novo endereço"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "Sua-Instancia",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"phone\": {{ $json.Telefone }},\n  \"message\": \"Perfeito! Seu novo endereço foi atualizado com sucesso. ✅\\n\\n📍 *Endereço registrado:* {{ $('Resposta clientes').item.json.body.text.message }}\\n\\nPor favor, confirme se as informações estão corretas respondendo *Sim* para continuarmos com o agendamento.\"\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        1536
+      ],
+      "id": "49db4d5c-804e-4711-a79e-2768357ca575",
+      "name": "Confirma novo endereço"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "Sua_planilha",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sua_planilha",
+          "mode": "url"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        256,
+        960
+      ],
+      "id": "6a3eac13-bbdc-4d67-9cda-2d835d62b9ea",
+      "name": "Busca Dados"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "Sua_planilha",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sua_planilha",
+          "mode": "url"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        256,
+        1152
+      ],
+      "id": "69f49d9a-23e4-4dde-a0c1-2136c1f671e3",
+      "name": "Busca Dados 1"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "Sua_planilha",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sua_planilha",
+          "mode": "url"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        256,
+        1344
+      ],
+      "id": "443a9b91-3dfa-462d-8c87-ef959697fe9e",
+      "name": "Busca dados 2"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "Sua_planilha",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sua_planilha",
+          "mode": "url"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        256,
+        1536
+      ],
+      "id": "e0065f1d-83d2-46c1-96c7-fde403ea898d",
+      "name": "Busca dados 3"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "Sua_planilha",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sua_planilha",
+          "mode": "url"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        928,
+        960
+      ],
+      "id": "e91e1c1b-b26b-45e5-8535-df39c3a3ae3b",
+      "name": "Atualiza Status"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "Sua_planilha",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sua_planilha",
+          "mode": "url"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        720,
+        1536
+      ],
+      "id": "473a0c98-89d5-4e55-82db-bb1f23ad5e8a",
+      "name": "Atualiza Status2"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        704,
+        1152
+      ],
+      "id": "f3791443-4c1f-4066-ad72-a440348a02c9",
+      "name": "No Operation, do nothing4"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "0ae674bf-cc55-4e55-92d2-0c9a599d7b9f",
+              "leftValue": "={{ $json.Status }}",
+              "rightValue": "Aguardando data",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -832,
+        1216
+      ],
+      "id": "209a1228-489c-46bc-9bb0-431d08ff4bad",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "Sua_planilha",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sua_planilha",
+          "mode": "url"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -1040,
+        1216
+      ],
+      "id": "268a6e38-786c-4111-b4c3-2c24691fb873",
+      "name": "Get row(s) in sheet"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -512,
+        448
+      ],
+      "id": "e076e128-80ac-4e4e-8ef2-042f6df1b722",
+      "name": "OpenAI Chat Model1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "Sua-Instancia",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"phone\": \"{{$json.Telefone}}\",\n  \"message\": \"Ótimo, endereço confirmado! Podemos seguir com o seu atendimento?\"\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        1152
+      ],
+      "id": "c69a3cd3-3c58-46fa-8ee1-ae4e135edcda",
+      "name": "Segue atendimento"
+    },
+    {
+      "parameters": {
+        "content": "## SISTEMA DE CONFIRMAÇÃO OU ALTERAÇÃO DE ENDEREÇO, ATUALIZA A PLANILHA NA COLUNA STATUS, SE ENCERRA QUANDO STATUS - AGUARDANDO DATA",
+        "height": 976,
+        "width": 1344,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        176,
+        864
+      ],
+      "typeVersion": 1,
+      "id": "5e6d6e19-7035-4442-b6a0-dfeec5d7c468",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => {\n\n  const hoje = new Date();\n  const opcoes = [];\n  let diasEncontrados = 0;\n  let data = new Date(hoje);\n\n  while (diasEncontrados < 2) {\n    data.setDate(data.getDate() + 1);\n    const diaSemana = data.getDay();\n    if (diaSemana >= 1 && diaSemana <= 5) {\n      const dia = String(data.getDate()).padStart(2, \"0\");\n      const mes = String(data.getMonth() + 1).padStart(2, \"0\");\n      const nomeDia = data.toLocaleDateString(\"pt-BR\", { weekday: \"long\" });\n      opcoes.push(`${nomeDia} (${dia}/${mes})`);\n      diasEncontrados++;\n    }\n  }\n\n  const mensagem =\n    `Vamos agendar a recuperação do equipamento:\\n\\n` +\n    `1️⃣ ${opcoes[0]} - Manhã\\n` +\n    `2️⃣ ${opcoes[0]} - Tarde\\n` +\n    `3️⃣ ${opcoes[1]} - Manhã\\n` +\n    `4️⃣ ${opcoes[1]} - Tarde\\n\\n` +\n    `Envie o número da opção desejada.`;\n\n  item.json.MensagemPersonalizada = mensagem;\n\n  let telefone = String(item.json.Telefone || \"\").replace(/\\D/g, \"\");\n  if (telefone && !telefone.startsWith(\"55\")) telefone = \"55\" + telefone;\n  item.json.Telefone = telefone;\n\n  item.json.DatasDisponiveis = opcoes;\n  item.json.TurnosDisponiveis = [\"Manhã\", \"Tarde\"];\n\n  return item;\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        -128
+      ],
+      "id": "d646055d-f1ef-4cc5-b8d8-f219f0a0ff3b",
+      "name": "Formata mensagem com data e turno"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "1e4db9ed-e54c-412a-947e-7762dd74baf2",
+                    "leftValue": "={{ $json.output }}",
+                    "rightValue": "invalido",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "6ffa5088-a608-4f04-95e0-778102a5e79d",
+                    "leftValue": "={{ $json.output }}",
+                    "rightValue": "=opcao_1",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "8392429a-97ee-4e64-8b89-2b481c35ac6c",
+                    "leftValue": "={{ $json.output }}",
+                    "rightValue": "opcao_2",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "f78db0a0-3a87-4861-aa45-12be9f21a195",
+                    "leftValue": "={{ $json.output }}",
+                    "rightValue": "opcao_3",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "fecc6f92-36e6-446e-ba47-3f5a98dbb2dd",
+                    "leftValue": "={{ $json.output }}",
+                    "rightValue": "opcao_4",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "de9a76a7-f474-43e9-bd17-71971271a113",
+                    "leftValue": "={{ $json.output }}",
+                    "rightValue": "mais_datas",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.3,
+      "position": [
+        176,
+        240
+      ],
+      "id": "edb9adf6-e5fd-4b45-843f-864d197e1ce3",
+      "name": "Switch1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "Sua-Instancia",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"phone\": {{ $('Get row(s) in sheet').item.json.Telefone }},\n  \"message\": \"Vamos agendar a recuperação do equipamento:\\n\\n1️⃣ {{$json.DatasDisponiveis[0]}} - Manhã\\n2️⃣ {{$json.DatasDisponiveis[0]}} - Tarde\\n3️⃣ {{$json.DatasDisponiveis[1]}} - Manhã\\n4️⃣ {{$json.DatasDisponiveis[1]}} - Tarde\\n\\nResponda apenas com o número da opção.\"\n}\n\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        -128
+      ],
+      "id": "7e39f342-bf55-4a3c-ad1c-551108d09c99",
+      "name": "Envia Datas"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        -128
+      ],
+      "id": "e74f1e92-05a3-43d8-b0aa-d1796878ea3b",
+      "name": "No Operation, do nothing5"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Analise a mensagem do cliente e classifique em uma das categorias abaixo:\n\n- confirmacao_endereco → se o cliente confirmou de forma clara o endereço atual, mencionando o endereço ou respondendo algo diretamente relacionado à confirmação (ex: “sim, está correto”, “moro aqui mesmo”, “isso, esse é meu endereço”, “1”). Não considere respostas genéricas como “ok”, “bom dia”, “tudo bem”, “olá”, “certo” ou mensagens sem referência ao endereço.\n- mudanca_endereco → se o cliente informou que mudou, o endereço está incorreto ou não mora mais (ex: “me mudei”, “troquei de casa”, “não moro mais aí”, ou respondeu com o número 2).\n- novo_endereco → se o cliente enviou um novo endereço, ou seja, mencionou bairro, rua, número ou qualquer texto que pareça um endereço (ex: “Jardim das Flores - Rua A - 123”, “Centro - Av. Brasil - 45”, “Rua João, 89”).\n- outro → se não for possível determinar, ou se for apenas uma saudação, dúvida ou resposta genérica (ex: “oi”, “bom dia”, “tudo bem”, “quem fala”, “quero saber do atendimento”).\n\nResponda **apenas** com uma das quatro palavras exatas:\nconfirmacao_endereco\nmudanca_endereco\nnovo_endereco\noutro\n\nMensagem do cliente: {{$json[\"RespostaTexto\"] || $json[\"body\"]?.text?.message || $json[\"body\"]?.message}}\n",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -544,
+        1232
+      ],
+      "id": "90966dac-0ef7-4595-b1b2-4f1fb4ddb27b",
+      "name": "Agente endereços"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Analise a mensagem enviada pelo cliente e classifique em uma das categorias abaixo relacionadas ao agendamento da visita técnica.\n\nO cliente deve escolher uma data e turno entre as opções previamente apresentadas:\n\n1 → Primeira data disponível, período da manhã\n2 → Primeira data disponível, período da tarde\n3 → Segunda data disponível, período da manhã\n4 → Segunda data disponível, período da tarde\n\nUtilize as datas enviadas ao cliente e armazenadas no JSON:\nDatas disponíveis: {{$json[\"DatasDisponiveis\"]}}\nTurnos disponíveis: {{$json[\"TurnosDisponiveis\"]}}\n\nRegras de interpretação:\n• Respostas com número de 1 a 4 devem ser classificadas diretamente\n• Caso mencione dia correspondente à primeira opção e o turno manhã → opcao_1\n• Caso mencione dia correspondente à primeira opção e o turno tarde → opcao_2\n• Caso mencione dia correspondente à segunda opção e o turno manhã → opcao_3\n• Caso mencione dia correspondente à segunda opção e o turno tarde → opcao_4\n• Se pedir novas datas ou questionar alternativas → mais_datas\n• Se informar uma data diferente das disponibilizadas → data_especifica\n• Caso a resposta não permita definição → invalido\n\nResponda apenas com uma das seguintes palavras exatas:\nopcao_1\nopcao_2\nopcao_3\nopcao_4\nmais_datas\ndata_especifica\ninvalido\n\nMensagem do cliente para analisar:\n{{$json[\"RespostaTexto\"] || $json[\"body\"]?.text?.message}}\n\n\n\n",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -512,
+        304
+      ],
+      "id": "a5b7be36-1d7f-4eb3-99c8-a1d5aacc8699",
+      "name": "Agente Datas"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => {\n\n  const hoje = new Date();\n  const opcoes = [];\n  let diasEncontrados = 0;\n  let data = new Date(hoje);\n\n  while (diasEncontrados < 2) {\n    data.setDate(data.getDate() + 1);\n    const diaSemana = data.getDay();\n    if (diaSemana >= 1 && diaSemana <= 5) {\n      const dia = String(data.getDate()).padStart(2, \"0\");\n      const mes = String(data.getMonth() + 1).padStart(2, \"0\");\n      const nomeDia = data.toLocaleDateString(\"pt-BR\", { weekday: \"long\" });\n      opcoes.push(`${nomeDia} (${dia}/${mes})`);\n      diasEncontrados++;\n    }\n  }\n\n  const mensagem =\n    `Vamos agendar a recuperação do equipamento:\\n\\n` +\n    `1️⃣ ${opcoes[0]} - Manhã\\n` +\n    `2️⃣ ${opcoes[0]} - Tarde\\n` +\n    `3️⃣ ${opcoes[1]} - Manhã\\n` +\n    `4️⃣ ${opcoes[1]} - Tarde\\n\\n` +\n    `Envie o número da opção desejada.`;\n\n  item.json.MensagemPersonalizada = mensagem;\n\n  let telefone = String(item.json.Telefone || \"\").replace(/\\D/g, \"\");\n  if (telefone && !telefone.startsWith(\"55\")) telefone = \"55\" + telefone;\n  item.json.Telefone = telefone;\n\n  item.json.DatasDisponiveis = opcoes;\n  item.json.TurnosDisponiveis = [\"Manhã\", \"Tarde\"];\n\n  return item;\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        32
+      ],
+      "id": "e20dfd5e-0216-442c-907a-6f9d2139f5d1",
+      "name": "Formata Data"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "Sua_planilha",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sua_planilha",
+          "mode": "url"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1200,
+        32
+      ],
+      "id": "87374fe6-e107-4021-8c64-c2f33343b9dc",
+      "name": "Finaliza data e status"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => {\n\n  const hoje = new Date();\n  const opcoes = [];\n  let diasEncontrados = 0;\n  let data = new Date(hoje);\n\n  while (diasEncontrados < 2) {\n    data.setDate(data.getDate() + 1);\n    const diaSemana = data.getDay();\n    if (diaSemana >= 1 && diaSemana <= 5) {\n      const dia = String(data.getDate()).padStart(2, \"0\");\n      const mes = String(data.getMonth() + 1).padStart(2, \"0\");\n      const nomeDia = data.toLocaleDateString(\"pt-BR\", { weekday: \"long\" });\n      opcoes.push(`${nomeDia} (${dia}/${mes})`);\n      diasEncontrados++;\n    }\n  }\n\n  const mensagem =\n    `Vamos agendar a recuperação do equipamento:\\n\\n` +\n    `1️⃣ ${opcoes[0]} - Manhã\\n` +\n    `2️⃣ ${opcoes[0]} - Tarde\\n` +\n    `3️⃣ ${opcoes[1]} - Manhã\\n` +\n    `4️⃣ ${opcoes[1]} - Tarde\\n\\n` +\n    `Envie o número da opção desejada.`;\n\n  item.json.MensagemPersonalizada = mensagem;\n\n  let telefone = String(item.json.Telefone || \"\").replace(/\\D/g, \"\");\n  if (telefone && !telefone.startsWith(\"55\")) telefone = \"55\" + telefone;\n  item.json.Telefone = telefone;\n\n  item.json.DatasDisponiveis = opcoes;\n  item.json.TurnosDisponiveis = [\"Manhã\", \"Tarde\"];\n\n  return item;\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        176
+      ],
+      "id": "9db96865-b004-434f-b131-8ad37d7cdff5",
+      "name": "Formata Data1"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => {\n\n  const hoje = new Date();\n  const opcoes = [];\n  let diasEncontrados = 0;\n  let data = new Date(hoje);\n\n  while (diasEncontrados < 2) {\n    data.setDate(data.getDate() + 1);\n    const diaSemana = data.getDay();\n    if (diaSemana >= 1 && diaSemana <= 5) {\n      const dia = String(data.getDate()).padStart(2, \"0\");\n      const mes = String(data.getMonth() + 1).padStart(2, \"0\");\n      const nomeDia = data.toLocaleDateString(\"pt-BR\", { weekday: \"long\" });\n      opcoes.push(`${nomeDia} (${dia}/${mes})`);\n      diasEncontrados++;\n    }\n  }\n\n  const mensagem =\n    `Vamos agendar a recuperação do equipamento:\\n\\n` +\n    `1️⃣ ${opcoes[0]} - Manhã\\n` +\n    `2️⃣ ${opcoes[0]} - Tarde\\n` +\n    `3️⃣ ${opcoes[1]} - Manhã\\n` +\n    `4️⃣ ${opcoes[1]} - Tarde\\n\\n` +\n    `Envie o número da opção desejada.`;\n\n  item.json.MensagemPersonalizada = mensagem;\n\n  let telefone = String(item.json.Telefone || \"\").replace(/\\D/g, \"\");\n  if (telefone && !telefone.startsWith(\"55\")) telefone = \"55\" + telefone;\n  item.json.Telefone = telefone;\n\n  item.json.DatasDisponiveis = opcoes;\n  item.json.TurnosDisponiveis = [\"Manhã\", \"Tarde\"];\n\n  return item;\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        528
+      ],
+      "id": "7c33df17-c5d2-4f44-a302-78666efea64e",
+      "name": "Formata Data2"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => {\n\n  const hoje = new Date();\n  const opcoes = [];\n  let diasEncontrados = 0;\n  let data = new Date(hoje);\n\n  while (diasEncontrados < 2) {\n    data.setDate(data.getDate() + 1);\n    const diaSemana = data.getDay();\n    if (diaSemana >= 1 && diaSemana <= 5) {\n      const dia = String(data.getDate()).padStart(2, \"0\");\n      const mes = String(data.getMonth() + 1).padStart(2, \"0\");\n      const nomeDia = data.toLocaleDateString(\"pt-BR\", { weekday: \"long\" });\n      opcoes.push(`${nomeDia} (${dia}/${mes})`);\n      diasEncontrados++;\n    }\n  }\n\n  const mensagem =\n    `Vamos agendar a recuperação do equipamento:\\n\\n` +\n    `1️⃣ ${opcoes[0]} - Manhã\\n` +\n    `2️⃣ ${opcoes[0]} - Tarde\\n` +\n    `3️⃣ ${opcoes[1]} - Manhã\\n` +\n    `4️⃣ ${opcoes[1]} - Tarde\\n\\n` +\n    `Envie o número da opção desejada.`;\n\n  item.json.MensagemPersonalizada = mensagem;\n\n  let telefone = String(item.json.Telefone || \"\").replace(/\\D/g, \"\");\n  if (telefone && !telefone.startsWith(\"55\")) telefone = \"55\" + telefone;\n  item.json.Telefone = telefone;\n\n  item.json.DatasDisponiveis = opcoes;\n  item.json.TurnosDisponiveis = [\"Manhã\", \"Tarde\"];\n\n  return item;\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        384
+      ],
+      "id": "86cb92f5-13fe-4dd1-ab44-73a5b4fce618",
+      "name": "Formata Data3"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "Sua-Instancia",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"phone\": {{ $('Get row(s) in sheet').item.json.Telefone }},\n  \"message\": \"Sua retirada de equipamento está marcada para:\\n📅 Data: {{ $json.DatasDisponiveis[0] }}\\n🕒 Turno: Tarde\\n\\nSe precisar alterar a data ou tiver alguma dúvida, entre em contato com nosso suporte: 2222-3333\"\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        176
+      ],
+      "id": "fd8943b4-da70-4723-910b-d08fb61dab88",
+      "name": "Confirma data"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "Sua-Instancia",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"phone\": {{ $('Get row(s) in sheet').item.json.Telefone }},\n  \"message\": \"Sua retirada de equipamento está marcada para:\\n📅 Data: {{ $json.DatasDisponiveis[0] }}\\n🕒 Turno: Manhã\\n\\nSe precisar alterar a data ou tiver alguma dúvida, entre em contato com nosso suporte: 2222-3333\"\n}\n\n\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        32
+      ],
+      "id": "b3d47fac-4c1d-458e-9e1a-fda307637db9",
+      "name": "Confirma data1"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "Sua_planilha",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sua_planilha",
+          "mode": "url"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1200,
+        176
+      ],
+      "id": "0a37b5b1-c87f-4f9f-ab01-b3054bb747fb",
+      "name": "Finaliza data e status1"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1488,
+        48
+      ],
+      "id": "71729fee-fd08-4476-83a9-d8e575a28690",
+      "name": "No Operation, do nothing3"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1472,
+        176
+      ],
+      "id": "5c4eed6e-17ae-4e64-ade7-31a51db90b9d",
+      "name": "No Operation, do nothing6"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "Sua-Instancia",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"phone\": {{ $('Get row(s) in sheet').item.json.Telefone }},\n  \"message\": \"Sua retirada de equipamento está marcada para:\\n📅 Data: {{ $json.DatasDisponiveis[1] }}\\n🕒 Turno: Manhã\\n\\nSe precisar alterar a data ou tiver alguma dúvida, entre em contato com nosso suporte: 2222-3333\"\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        384
+      ],
+      "id": "fab6ed34-43ef-47c0-8aca-813f6fac2d7a",
+      "name": "Confirma data2"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "Sua_planilha",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sua_planilha",
+          "mode": "url"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1200,
+        384
+      ],
+      "id": "5813a749-400a-4520-98c1-65efe8cb1d80",
+      "name": "Finaliza data e status2"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1472,
+        384
+      ],
+      "id": "146fd099-5a8a-4015-8922-35c5e8dfd816",
+      "name": "No Operation, do nothing7"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "Sua_planilha",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sua_planilha",
+          "mode": "url"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1200,
+        528
+      ],
+      "id": "136aef90-194b-43c0-9f60-b239b2493f60",
+      "name": "Finaliza data e status3"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1472,
+        528
+      ],
+      "id": "6e341600-64c3-49bd-a9dd-612d7b251e25",
+      "name": "No Operation, do nothing8"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "Sua-Instancia",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"phone\": {{ $('Get row(s) in sheet').item.json.Telefone }},\n  \"message\": \"Sua retirada de equipamento está marcada para:\\n📅 Data: {{ $json.DatasDisponiveis[1] }}\\n🕒 Turno: Tarde\\n\\nSe precisar alterar a data ou tiver alguma dúvida, entre em contato com nosso suporte: 2222-3333\"\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        528
+      ],
+      "id": "a10c6cd7-40f0-4731-bd5e-c5f7b9a2ed71",
+      "name": "Confirma data3"
+    },
+    {
+      "parameters": {
+        "content": "## DEFINE DATAS E TURNOS\n\n",
+        "height": 1024,
+        "width": 1344,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        320,
+        -208
+      ],
+      "typeVersion": 1,
+      "id": "830efb24-753c-48ad-b3bb-dc1a1269e89b",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "amount": 3
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -80,
+        304
+      ],
+      "id": "8b7d438b-f5e8-4001-bef3-c83b7bd5d874",
+      "name": "Wait1",
+      "webhookId": "8a292bd5-c412-4395-aec1-20e7a1686f02"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Envia confirmação de endereço": {
+      "main": [
+        [
+          {
+            "node": "Atualiza Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resposta clientes": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ler mensagens": {
+      "main": [
+        [
+          {
+            "node": "Resposta clientes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formata mensagem com endereço": {
+      "main": [
+        [
+          {
+            "node": "Envia confirmação de endereço",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agente endereços",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Busca Dados",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Busca Dados 1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Busca dados 2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Busca dados 3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Solicita novo endereço": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirma novo endereço": {
+      "main": [
+        [
+          {
+            "node": "Atualiza Status2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Busca Dados": {
+      "main": [
+        [
+          {
+            "node": "Formata mensagem com endereço",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Busca Dados 1": {
+      "main": [
+        [
+          {
+            "node": "Segue atendimento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Busca dados 2": {
+      "main": [
+        [
+          {
+            "node": "Solicita novo endereço",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Busca dados 3": {
+      "main": [
+        [
+          {
+            "node": "Confirma novo endereço",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Atualiza Status": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Atualiza Status2": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Agente Datas",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Agente endereços",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agente Datas",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Segue atendimento": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formata mensagem com data e turno": {
+      "main": [
+        [
+          {
+            "node": "Envia Datas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch1": {
+      "main": [
+        [
+          {
+            "node": "Formata mensagem com data e turno",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Formata Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Formata Data1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Formata Data3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Formata Data2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Envia Datas": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agente endereços": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agente Datas": {
+      "main": [
+        [
+          {
+            "node": "Wait1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formata Data": {
+      "main": [
+        [
+          {
+            "node": "Confirma data1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finaliza data e status": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formata Data1": {
+      "main": [
+        [
+          {
+            "node": "Confirma data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formata Data3": {
+      "main": [
+        [
+          {
+            "node": "Confirma data2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formata Data2": {
+      "main": [
+        [
+          {
+            "node": "Confirma data3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirma data1": {
+      "main": [
+        [
+          {
+            "node": "Finaliza data e status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirma data": {
+      "main": [
+        [
+          {
+            "node": "Finaliza data e status1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finaliza data e status1": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirma data2": {
+      "main": [
+        [
+          {
+            "node": "Finaliza data e status2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finaliza data e status2": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finaliza data e status3": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirma data3": {
+      "main": [
+        [
+          {
+            "node": "Finaliza data e status3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait1": {
+      "main": [
+        [
+          {
+            "node": "Switch1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "d40def86-6b95-4e34-b386-6dd61a0fac31",
+  "meta": {
+    "instanceId": "25b457b3ca883af8564e3cbd604b8d794598e992e31ded1f3527eec9b0f2652c"
+  },
+  "id": "bh2oAYS1AXIVHiMI",
+  "tags": []
+}
