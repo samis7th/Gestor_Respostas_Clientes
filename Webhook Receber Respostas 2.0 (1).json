@@ -1,0 +1,1524 @@
+{
+  "name": "Webhook Receber Respostas 2.0",
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"phone\": \"{{$json.Telefone}}\",\n  \"message\": \"{{$json.MensagemPersonalizada.replace(/\\n/g, '\\\\n')}}\\n\\n1 - Sim!\\n2 - Me mudei.\"\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        864,
+        976
+      ],
+      "id": "5280d258-4b66-49dd-af4b-b8d1952bf71c",
+      "name": "Envia confirmação de endereço"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1312,
+        976
+      ],
+      "id": "3d1eefec-66a8-42a0-8cbd-e0536ee82c24",
+      "name": "No Operation, do nothing"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "url"
+        }
+      },
+      "name": "Resposta clientes",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 3,
+      "position": [
+        -1104,
+        1232
+      ],
+      "id": "07cafa8b-78a4-476d-89ba-0ebb81d6e1c3"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "=receber-resposta",
+        "options": {}
+      },
+      "name": "Ler mensagens",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -1312,
+        1232
+      ],
+      "webhookId": "receber-resposta",
+      "id": "7b68a9c5-9264-42c7-8605-48b3e61da337",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => {\n  // Tenta pegar o endereço dentro de rows (resultado do Get Row)\n  const rows = item.json.rows || [];\n  const endereco = (rows[0]?.Endereco || rows[0]?.endereco || item.json.Endereco || \"não informado\").trim();\n\n  // Monta a mensagem personalizada\n  const mensagem = `Perfeito! Podemos confirmar seu endereço?\\n\\n📍 *${$input.first().json['Endereço']}*`;\n\n  // Salva no JSON para o próximo nó\n  item.json.MensagemPersonalizada = mensagem;\n\n  // Garante telefone formatado corretamente\n  let telefone = String(item.json.Telefone || \"\").replace(/\\D/g, \"\");\n  if (telefone && !telefone.startsWith(\"55\")) telefone = \"55\" + telefone;\n  item.json.Telefone = telefone;\n\n  return item;\n});\n\n\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        640,
+        976
+      ],
+      "id": "99e894d4-7397-4c6f-987d-6265504e979a",
+      "name": "Formata mensagem com endereço"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -384,
+        1392
+      ],
+      "id": "3cd6bdab-5cd0-4532-90d1-7ad87a93773b",
+      "name": "OpenAI Chat Model"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.output }}",
+                    "rightValue": "outro",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "eb076a99-1b76-45bb-b030-b66432420a88"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "e3f68288-b027-4089-8deb-254438feb07a",
+                    "leftValue": "={{ $json.output }}",
+                    "rightValue": "confirmacao_endereco",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "e52f7283-d781-4697-9236-2baf3e9ab877",
+                    "leftValue": "={{ $json.output }}",
+                    "rightValue": "mudanca_endereco",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "8cc14a01-c29f-45e2-bcff-de3d8ee01333",
+                    "leftValue": "={{ $json.output }}",
+                    "rightValue": "novo_endereco",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.3,
+      "position": [
+        192,
+        1216
+      ],
+      "id": "9f023e17-9268-4dc2-8039-2fcb33a7340d",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "amount": 3
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -16,
+        1248
+      ],
+      "id": "29339252-f93b-419a-81b9-7a637e9f1a78",
+      "name": "Wait",
+      "webhookId": "b6faa105-7c57-4f22-8d9b-d2aef9396aeb"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        864,
+        1360
+      ],
+      "id": "ccc22181-a16b-4600-ad5e-b079a919aa67",
+      "name": "No Operation, do nothing2"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1104,
+        1552
+      ],
+      "id": "aeb76a04-95cf-4da7-ae12-6bbd4f859133",
+      "name": "No Operation, do nothing1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"phone\": {{ $json.Telefone }},\n  \"message\": \"Poderia, por favor, nos informar o seu novo endereço?\\n\\nEnvie neste formato:\\nBairro - Rua - Número\"\n}\n\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        640,
+        1360
+      ],
+      "id": "c7b9144a-7e03-488b-9723-6398fda964ee",
+      "name": "Solicita novo endereço"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"phone\": {{ $json.Telefone }},\n  \"message\": \"Perfeito! Seu novo endereço foi atualizado com sucesso. ✅\\n\\n📍 *Endereço registrado:* {{ $('Resposta clientes').item.json.body.text.message }}\\n\\nPor favor, confirme se as informações estão corretas respondendo *Sim* para continuarmos com o agendamento.\"\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        640,
+        1552
+      ],
+      "id": "7db44a93-5bd3-43a6-8da0-b2d9e2f85ba8",
+      "name": "Confirma novo endereço"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "url"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        416,
+        976
+      ],
+      "id": "dae383ec-958a-43a9-a92d-ce27d0030f10",
+      "name": "Busca Dados"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "url"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        416,
+        1168
+      ],
+      "id": "fe62ec53-1819-4c0c-8036-a2941dd50323",
+      "name": "Busca Dados 1"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "url"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        416,
+        1360
+      ],
+      "id": "5e6cb717-d7af-4f41-9c16-11923f62b625",
+      "name": "Busca dados 2"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "url"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        416,
+        1552
+      ],
+      "id": "f8fbaeb3-7be4-4fae-a545-0d06137d3025",
+      "name": "Busca dados 3"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "url"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1088,
+        976
+      ],
+      "id": "fc535b47-7bdf-4d26-b246-3537d29d5cf4",
+      "name": "Atualiza Status"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "url"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        880,
+        1552
+      ],
+      "id": "19be7b8e-ce4f-4bb6-a275-15b3d2672785",
+      "name": "Atualiza Status2"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        864,
+        1168
+      ],
+      "id": "1a955b06-9c6b-4560-880b-f14315800430",
+      "name": "No Operation, do nothing4"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "0ae674bf-cc55-4e55-92d2-0c9a599d7b9f",
+              "leftValue": "={{ $json.Status }}",
+              "rightValue": "Aguardando data",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -672,
+        1232
+      ],
+      "id": "391d0c18-3fbd-4122-9e45-2688c556ba83",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "url"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -880,
+        1232
+      ],
+      "id": "778b5f98-a67a-42e5-84f9-711533f07ed9",
+      "name": "Get row(s) in sheet"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -352,
+        464
+      ],
+      "id": "27d1d051-7262-4e19-80f0-a70643ff15fb",
+      "name": "OpenAI Chat Model1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"phone\": \"{{$json.Telefone}}\",\n  \"message\": \"Ótimo, endereço confirmado! Podemos seguir com o seu atendimento?\"\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        640,
+        1168
+      ],
+      "id": "6f43358d-70a1-4211-aca7-71fef0123f19",
+      "name": "Segue atendimento"
+    },
+    {
+      "parameters": {
+        "content": "## SISTEMA DE CONFIRMAÇÃO OU ALTERAÇÃO DE ENDEREÇO, ATUALIZA A PLANILHA NA COLUNA STATUS, SE ENCERRA QUANDO STATUS - AGUARDANDO DATA",
+        "height": 976,
+        "width": 1344,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        336,
+        880
+      ],
+      "typeVersion": 1,
+      "id": "2c710a04-1fa2-4686-aa66-e72ed6cfb66d",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => {\n\n  const hoje = new Date();\n  const opcoes = [];\n  let diasEncontrados = 0;\n  let data = new Date(hoje);\n\n  while (diasEncontrados < 2) {\n    data.setDate(data.getDate() + 1);\n    const diaSemana = data.getDay();\n    if (diaSemana >= 1 && diaSemana <= 5) {\n      const dia = String(data.getDate()).padStart(2, \"0\");\n      const mes = String(data.getMonth() + 1).padStart(2, \"0\");\n      const nomeDia = data.toLocaleDateString(\"pt-BR\", { weekday: \"long\" });\n      opcoes.push(`${nomeDia} (${dia}/${mes})`);\n      diasEncontrados++;\n    }\n  }\n\n  const mensagem =\n    `Vamos agendar a recuperação do equipamento:\\n\\n` +\n    `1️⃣ ${opcoes[0]} - Manhã\\n` +\n    `2️⃣ ${opcoes[0]} - Tarde\\n` +\n    `3️⃣ ${opcoes[1]} - Manhã\\n` +\n    `4️⃣ ${opcoes[1]} - Tarde\\n\\n` +\n    `Envie o número da opção desejada.`;\n\n  item.json.MensagemPersonalizada = mensagem;\n\n  let telefone = String(item.json.Telefone || \"\").replace(/\\D/g, \"\");\n  if (telefone && !telefone.startsWith(\"55\")) telefone = \"55\" + telefone;\n  item.json.Telefone = telefone;\n\n  item.json.DatasDisponiveis = opcoes;\n  item.json.TurnosDisponiveis = [\"Manhã\", \"Tarde\"];\n\n  return item;\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        -112
+      ],
+      "id": "65c6313d-4358-4bfb-8cab-40011e070c61",
+      "name": "Formata mensagem com data e turno"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "1e4db9ed-e54c-412a-947e-7762dd74baf2",
+                    "leftValue": "={{ $json.output }}",
+                    "rightValue": "invalido",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "6ffa5088-a608-4f04-95e0-778102a5e79d",
+                    "leftValue": "={{ $json.output }}",
+                    "rightValue": "=opcao_1",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "8392429a-97ee-4e64-8b89-2b481c35ac6c",
+                    "leftValue": "={{ $json.output }}",
+                    "rightValue": "opcao_2",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "f78db0a0-3a87-4861-aa45-12be9f21a195",
+                    "leftValue": "={{ $json.output }}",
+                    "rightValue": "opcao_3",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "fecc6f92-36e6-446e-ba47-3f5a98dbb2dd",
+                    "leftValue": "={{ $json.output }}",
+                    "rightValue": "opcao_4",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "de9a76a7-f474-43e9-bd17-71971271a113",
+                    "leftValue": "={{ $json.output }}",
+                    "rightValue": "mais_datas",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.3,
+      "position": [
+        336,
+        256
+      ],
+      "id": "ea6b5f12-af89-440a-a0e5-cee6d6a5051a",
+      "name": "Switch1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"phone\": {{ $('Get row(s) in sheet').item.json.Telefone }},\n  \"message\": \"Vamos agendar a recuperação do equipamento:\\n\\n1️⃣ {{$json.DatasDisponiveis[0]}} - Manhã\\n2️⃣ {{$json.DatasDisponiveis[0]}} - Tarde\\n3️⃣ {{$json.DatasDisponiveis[1]}} - Manhã\\n4️⃣ {{$json.DatasDisponiveis[1]}} - Tarde\\n\\nResponda apenas com o número da opção.\"\n}\n\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1040,
+        -112
+      ],
+      "id": "6387ba3d-8339-4758-9881-17823a6d3c06",
+      "name": "Envia Datas"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1360,
+        -112
+      ],
+      "id": "29f37e81-eef7-4a57-978c-ab07a95b0f67",
+      "name": "No Operation, do nothing5"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Analise a mensagem do cliente e classifique em uma das categorias abaixo:\n\n- confirmacao_endereco → se o cliente confirmou de forma clara o endereço atual, mencionando o endereço ou respondendo algo diretamente relacionado à confirmação (ex: “sim, está correto”, “moro aqui mesmo”, “isso, esse é meu endereço”, “1”). Não considere respostas genéricas como “ok”, “bom dia”, “tudo bem”, “olá”, “certo” ou mensagens sem referência ao endereço.\n- mudanca_endereco → se o cliente informou que mudou, o endereço está incorreto ou não mora mais (ex: “me mudei”, “troquei de casa”, “não moro mais aí”, ou respondeu com o número 2).\n- novo_endereco → se o cliente enviou um novo endereço, ou seja, mencionou bairro, rua, número ou qualquer texto que pareça um endereço (ex: “Jardim das Flores - Rua A - 123”, “Centro - Av. Brasil - 45”, “Rua João, 89”).\n- outro → se não for possível determinar, ou se for apenas uma saudação, dúvida ou resposta genérica (ex: “oi”, “bom dia”, “tudo bem”, “quem fala”, “quero saber do atendimento”).\n\nResponda **apenas** com uma das quatro palavras exatas:\nconfirmacao_endereco\nmudanca_endereco\nnovo_endereco\noutro\n\nMensagem do cliente: {{$json[\"RespostaTexto\"] || $json[\"body\"]?.text?.message || $json[\"body\"]?.message}}\n",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -384,
+        1248
+      ],
+      "id": "a64f0aa5-32e6-4b2e-aae7-b299c4f15b9c",
+      "name": "Agente endereços"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Analise a mensagem enviada pelo cliente e classifique em uma das categorias abaixo relacionadas ao agendamento da visita técnica.\n\nO cliente deve escolher uma data e turno entre as opções previamente apresentadas:\n\n1 → Primeira data disponível, período da manhã\n2 → Primeira data disponível, período da tarde\n3 → Segunda data disponível, período da manhã\n4 → Segunda data disponível, período da tarde\n\nUtilize as datas enviadas ao cliente e armazenadas no JSON:\nDatas disponíveis: {{$json[\"DatasDisponiveis\"]}}\nTurnos disponíveis: {{$json[\"TurnosDisponiveis\"]}}\n\nRegras de interpretação:\n• Respostas com número de 1 a 4 devem ser classificadas diretamente\n• Caso mencione dia correspondente à primeira opção e o turno manhã → opcao_1\n• Caso mencione dia correspondente à primeira opção e o turno tarde → opcao_2\n• Caso mencione dia correspondente à segunda opção e o turno manhã → opcao_3\n• Caso mencione dia correspondente à segunda opção e o turno tarde → opcao_4\n• Se pedir novas datas ou questionar alternativas → mais_datas\n• Se informar uma data diferente das disponibilizadas → data_especifica\n• Caso a resposta não permita definição → invalido\n\nResponda apenas com uma das seguintes palavras exatas:\nopcao_1\nopcao_2\nopcao_3\nopcao_4\nmais_datas\ndata_especifica\ninvalido\n\nMensagem do cliente para analisar:\n{{$json[\"RespostaTexto\"] || $json[\"body\"]?.text?.message}}\n\n\n\n",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -352,
+        320
+      ],
+      "id": "fc934725-653b-4991-8058-822d4e9c5fb9",
+      "name": "Agente Datas"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => {\n\n  const hoje = new Date();\n  const opcoes = [];\n  let diasEncontrados = 0;\n  let data = new Date(hoje);\n\n  while (diasEncontrados < 2) {\n    data.setDate(data.getDate() + 1);\n    const diaSemana = data.getDay();\n    if (diaSemana >= 1 && diaSemana <= 5) {\n      const dia = String(data.getDate()).padStart(2, \"0\");\n      const mes = String(data.getMonth() + 1).padStart(2, \"0\");\n      const nomeDia = data.toLocaleDateString(\"pt-BR\", { weekday: \"long\" });\n      opcoes.push(`${nomeDia} (${dia}/${mes})`);\n      diasEncontrados++;\n    }\n  }\n\n  const mensagem =\n    `Vamos agendar a recuperação do equipamento:\\n\\n` +\n    `1️⃣ ${opcoes[0]} - Manhã\\n` +\n    `2️⃣ ${opcoes[0]} - Tarde\\n` +\n    `3️⃣ ${opcoes[1]} - Manhã\\n` +\n    `4️⃣ ${opcoes[1]} - Tarde\\n\\n` +\n    `Envie o número da opção desejada.`;\n\n  item.json.MensagemPersonalizada = mensagem;\n\n  let telefone = String(item.json.Telefone || \"\").replace(/\\D/g, \"\");\n  if (telefone && !telefone.startsWith(\"55\")) telefone = \"55\" + telefone;\n  item.json.Telefone = telefone;\n\n  item.json.DatasDisponiveis = opcoes;\n  item.json.TurnosDisponiveis = [\"Manhã\", \"Tarde\"];\n\n  return item;\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        48
+      ],
+      "id": "ef3650a2-3180-485b-bc93-3d36d5c1f007",
+      "name": "Formata Data"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "url"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1360,
+        48
+      ],
+      "id": "b0e20465-de14-414d-ad47-234990f273ac",
+      "name": "Finaliza data e status"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => {\n\n  const hoje = new Date();\n  const opcoes = [];\n  let diasEncontrados = 0;\n  let data = new Date(hoje);\n\n  while (diasEncontrados < 2) {\n    data.setDate(data.getDate() + 1);\n    const diaSemana = data.getDay();\n    if (diaSemana >= 1 && diaSemana <= 5) {\n      const dia = String(data.getDate()).padStart(2, \"0\");\n      const mes = String(data.getMonth() + 1).padStart(2, \"0\");\n      const nomeDia = data.toLocaleDateString(\"pt-BR\", { weekday: \"long\" });\n      opcoes.push(`${nomeDia} (${dia}/${mes})`);\n      diasEncontrados++;\n    }\n  }\n\n  const mensagem =\n    `Vamos agendar a recuperação do equipamento:\\n\\n` +\n    `1️⃣ ${opcoes[0]} - Manhã\\n` +\n    `2️⃣ ${opcoes[0]} - Tarde\\n` +\n    `3️⃣ ${opcoes[1]} - Manhã\\n` +\n    `4️⃣ ${opcoes[1]} - Tarde\\n\\n` +\n    `Envie o número da opção desejada.`;\n\n  item.json.MensagemPersonalizada = mensagem;\n\n  let telefone = String(item.json.Telefone || \"\").replace(/\\D/g, \"\");\n  if (telefone && !telefone.startsWith(\"55\")) telefone = \"55\" + telefone;\n  item.json.Telefone = telefone;\n\n  item.json.DatasDisponiveis = opcoes;\n  item.json.TurnosDisponiveis = [\"Manhã\", \"Tarde\"];\n\n  return item;\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        192
+      ],
+      "id": "375fdb58-9798-424a-89d5-2520bec5c25f",
+      "name": "Formata Data1"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => {\n\n  const hoje = new Date();\n  const opcoes = [];\n  let diasEncontrados = 0;\n  let data = new Date(hoje);\n\n  while (diasEncontrados < 2) {\n    data.setDate(data.getDate() + 1);\n    const diaSemana = data.getDay();\n    if (diaSemana >= 1 && diaSemana <= 5) {\n      const dia = String(data.getDate()).padStart(2, \"0\");\n      const mes = String(data.getMonth() + 1).padStart(2, \"0\");\n      const nomeDia = data.toLocaleDateString(\"pt-BR\", { weekday: \"long\" });\n      opcoes.push(`${nomeDia} (${dia}/${mes})`);\n      diasEncontrados++;\n    }\n  }\n\n  const mensagem =\n    `Vamos agendar a recuperação do equipamento:\\n\\n` +\n    `1️⃣ ${opcoes[0]} - Manhã\\n` +\n    `2️⃣ ${opcoes[0]} - Tarde\\n` +\n    `3️⃣ ${opcoes[1]} - Manhã\\n` +\n    `4️⃣ ${opcoes[1]} - Tarde\\n\\n` +\n    `Envie o número da opção desejada.`;\n\n  item.json.MensagemPersonalizada = mensagem;\n\n  let telefone = String(item.json.Telefone || \"\").replace(/\\D/g, \"\");\n  if (telefone && !telefone.startsWith(\"55\")) telefone = \"55\" + telefone;\n  item.json.Telefone = telefone;\n\n  item.json.DatasDisponiveis = opcoes;\n  item.json.TurnosDisponiveis = [\"Manhã\", \"Tarde\"];\n\n  return item;\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        544
+      ],
+      "id": "84ac3aec-8b9c-407c-9bf0-eb21606341b6",
+      "name": "Formata Data2"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => {\n\n  const hoje = new Date();\n  const opcoes = [];\n  let diasEncontrados = 0;\n  let data = new Date(hoje);\n\n  while (diasEncontrados < 2) {\n    data.setDate(data.getDate() + 1);\n    const diaSemana = data.getDay();\n    if (diaSemana >= 1 && diaSemana <= 5) {\n      const dia = String(data.getDate()).padStart(2, \"0\");\n      const mes = String(data.getMonth() + 1).padStart(2, \"0\");\n      const nomeDia = data.toLocaleDateString(\"pt-BR\", { weekday: \"long\" });\n      opcoes.push(`${nomeDia} (${dia}/${mes})`);\n      diasEncontrados++;\n    }\n  }\n\n  const mensagem =\n    `Vamos agendar a recuperação do equipamento:\\n\\n` +\n    `1️⃣ ${opcoes[0]} - Manhã\\n` +\n    `2️⃣ ${opcoes[0]} - Tarde\\n` +\n    `3️⃣ ${opcoes[1]} - Manhã\\n` +\n    `4️⃣ ${opcoes[1]} - Tarde\\n\\n` +\n    `Envie o número da opção desejada.`;\n\n  item.json.MensagemPersonalizada = mensagem;\n\n  let telefone = String(item.json.Telefone || \"\").replace(/\\D/g, \"\");\n  if (telefone && !telefone.startsWith(\"55\")) telefone = \"55\" + telefone;\n  item.json.Telefone = telefone;\n\n  item.json.DatasDisponiveis = opcoes;\n  item.json.TurnosDisponiveis = [\"Manhã\", \"Tarde\"];\n\n  return item;\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        400
+      ],
+      "id": "ea2ec7ba-cba3-402a-8a97-8b2c39d929e0",
+      "name": "Formata Data3"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"phone\": {{ $('Get row(s) in sheet').item.json.Telefone }},\n  \"message\": \"Sua retirada de equipamento está marcada para:\\n📅 Data: {{ $json.DatasDisponiveis[0] }}\\n🕒 Turno: Tarde\\n\\nSe precisar alterar a data ou tiver alguma dúvida, entre em contato com nosso suporte: 2222-3333\"\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1040,
+        192
+      ],
+      "id": "4d421aa8-8048-499e-94d6-68aeb12cca4f",
+      "name": "Confirma data"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"phone\": {{ $('Get row(s) in sheet').item.json.Telefone }},\n  \"message\": \"Sua retirada de equipamento está marcada para:\\n📅 Data: {{ $json.DatasDisponiveis[0] }}\\n🕒 Turno: Manhã\\n\\nSe precisar alterar a data ou tiver alguma dúvida, entre em contato com nosso suporte: 2222-3333\"\n}\n\n\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1040,
+        48
+      ],
+      "id": "cb003851-b9f4-4381-aa81-385bbe7c5d76",
+      "name": "Confirma data1"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "url"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1360,
+        192
+      ],
+      "id": "30fc878b-a15e-4006-bbf5-bef281d57c3e",
+      "name": "Finaliza data e status1"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1632,
+        48
+      ],
+      "id": "20270508-29da-4c5a-95dd-2b6b6d02bf7d",
+      "name": "No Operation, do nothing3"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1632,
+        192
+      ],
+      "id": "aed6c66e-4faa-4adb-a5e5-b78c10fa5509",
+      "name": "No Operation, do nothing6"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"phone\": {{ $('Get row(s) in sheet').item.json.Telefone }},\n  \"message\": \"Sua retirada de equipamento está marcada para:\\n📅 Data: {{ $json.DatasDisponiveis[1] }}\\n🕒 Turno: Manhã\\n\\nSe precisar alterar a data ou tiver alguma dúvida, entre em contato com nosso suporte: 2222-3333\"\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1040,
+        400
+      ],
+      "id": "418aac7a-8554-4a20-8146-cada58ab6d19",
+      "name": "Confirma data2"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "url"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1360,
+        400
+      ],
+      "id": "3c8a9358-cf4b-4040-a596-6cca69df0f55",
+      "name": "Finaliza data e status2"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1632,
+        400
+      ],
+      "id": "a24bdba4-d372-494b-b95c-b01894b1607d",
+      "name": "No Operation, do nothing7"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "url"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1360,
+        544
+      ],
+      "id": "6247f747-ea1e-497f-88fe-8a8a3282e1ea",
+      "name": "Finaliza data e status3"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1632,
+        544
+      ],
+      "id": "d3b20791-983f-4f9b-a4ea-7fc165d8af80",
+      "name": "No Operation, do nothing8"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"phone\": {{ $('Get row(s) in sheet').item.json.Telefone }},\n  \"message\": \"Sua retirada de equipamento está marcada para:\\n📅 Data: {{ $json.DatasDisponiveis[1] }}\\n🕒 Turno: Tarde\\n\\nSe precisar alterar a data ou tiver alguma dúvida, entre em contato com nosso suporte: 2222-3333\"\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1040,
+        544
+      ],
+      "id": "d4609e62-f47f-456b-b49c-ae76c1b220f9",
+      "name": "Confirma data3"
+    },
+    {
+      "parameters": {
+        "content": "## DEFINE DATAS E TURNOS\n\n",
+        "height": 1024,
+        "width": 1344,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        480,
+        -192
+      ],
+      "typeVersion": 1,
+      "id": "2f0b4e5d-8324-4b1f-a243-8359e3cb3736",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "amount": 3
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        80,
+        320
+      ],
+      "id": "ad947dd3-4f8e-411f-9f47-3dcb0b02b37d",
+      "name": "Wait1",
+      "webhookId": "8a292bd5-c412-4395-aec1-20e7a1686f02"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Envia confirmação de endereço": {
+      "main": [
+        [
+          {
+            "node": "Atualiza Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resposta clientes": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ler mensagens": {
+      "main": [
+        [
+          {
+            "node": "Resposta clientes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formata mensagem com endereço": {
+      "main": [
+        [
+          {
+            "node": "Envia confirmação de endereço",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agente endereços",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Busca Dados",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Busca Dados 1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Busca dados 2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Busca dados 3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Solicita novo endereço": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirma novo endereço": {
+      "main": [
+        [
+          {
+            "node": "Atualiza Status2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Busca Dados": {
+      "main": [
+        [
+          {
+            "node": "Formata mensagem com endereço",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Busca Dados 1": {
+      "main": [
+        [
+          {
+            "node": "Segue atendimento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Busca dados 2": {
+      "main": [
+        [
+          {
+            "node": "Solicita novo endereço",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Busca dados 3": {
+      "main": [
+        [
+          {
+            "node": "Confirma novo endereço",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Atualiza Status": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Atualiza Status2": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Agente Datas",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Agente endereços",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agente Datas",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Segue atendimento": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formata mensagem com data e turno": {
+      "main": [
+        [
+          {
+            "node": "Envia Datas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch1": {
+      "main": [
+        [
+          {
+            "node": "Formata mensagem com data e turno",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Formata Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Formata Data1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Formata Data3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Formata Data2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Envia Datas": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agente endereços": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agente Datas": {
+      "main": [
+        [
+          {
+            "node": "Wait1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formata Data": {
+      "main": [
+        [
+          {
+            "node": "Confirma data1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finaliza data e status": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formata Data1": {
+      "main": [
+        [
+          {
+            "node": "Confirma data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formata Data3": {
+      "main": [
+        [
+          {
+            "node": "Confirma data2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formata Data2": {
+      "main": [
+        [
+          {
+            "node": "Confirma data3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirma data1": {
+      "main": [
+        [
+          {
+            "node": "Finaliza data e status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirma data": {
+      "main": [
+        [
+          {
+            "node": "Finaliza data e status1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finaliza data e status1": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirma data2": {
+      "main": [
+        [
+          {
+            "node": "Finaliza data e status2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finaliza data e status2": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finaliza data e status3": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirma data3": {
+      "main": [
+        [
+          {
+            "node": "Finaliza data e status3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait1": {
+      "main": [
+        [
+          {
+            "node": "Switch1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "e7e38c73-8784-41e9-ab1a-831efa54dd16",
+  "meta": {
+    "instanceId": "25b457b3ca883af8564e3cbd604b8d794598e992e31ded1f3527eec9b0f2652c"
+  },
+  "id": "WMPbngL8uJkMdLa1",
+  "tags": []
+}
